@@ -1,0 +1,4 @@
+*.jpg
+colmap_export*
+database.db
+output.ply

@@ -108,6 +108,41 @@ def set_axes_equal(ax):
     # Set Y-axis upwards view angle for clarity
     ax.view_init(elev=20, azim=-60)
 
+def export_to_colmap():
+    import os
+    from scipy.spatial.transform import Rotation as R
+
+    export_dir = "colmap_export"
+    images_dir = os.path.join(export_dir, "images")
+    sparse_dir = os.path.join(export_dir, "sparse")
+    os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(sparse_dir, exist_ok=True)
+
+    # Prepare cameras.txt (using default iPhone intrinsics as example)
+    with open(os.path.join(sparse_dir, "cameras.txt"), 'w') as f:
+        f.write("# Camera_ID Model Width Height fx fy cx cy\n")
+        f.write("1 PINHOLE 1920 1440 1450 1450 960 540\n")
+
+    # Prepare images.txt
+    with open(os.path.join(sparse_dir, "images.txt"), "w") as f:
+        f.write("# Image_ID qw qx qy qz tx ty tz Camera_ID Name\n")
+        for idx, entry in enumerate(recorded_trajectory):
+            T = np.array(entry["pose"]).reshape(4,4)
+            position = T[:3, 3]
+            rotation = R.from_matrix(T[:3, :3])
+            qw, qx, qy, qz = rotation.as_quat()  # Ensure correct order for COLMAP
+            T = np.array(entry["pose"]).reshape(4, 4)  # Convert pose list to a NumPy array
+            tx, ty, tz = position  # Extract translation vector correctly   
+            image_name = f"frame_{idx:04d}.jpg"
+
+            # Save image
+            cv2.imwrite(os.path.join(images_dir, image_name), entry["frame"])
+
+            # Write to images.txt
+            f.write(f"{idx+1} {qw} {qx} {qy} {qz} {tx} {ty} {tz} 1 {image_name}\n")
+
+    print("Exported trajectory to COLMAP format successfully!")
+
 # -------------------------
 # Update the Matplotlib 3D Plot
 # -------------------------
@@ -197,6 +232,12 @@ def stop_recording_callback():
         mode = "idle"
         print("Recording stopped. {} frames recorded.".format(len(recorded_trajectory)))
 
+# Callback Function for Export Button
+def export_to_colmap_callback():
+    preprocess_recorded_data()
+    export_to_colmap()
+    print("COLMAP export completed.")
+
 def toggle_playback_callback():
     global mode, playback_running, last_update_time, playback_timer, current_playback_time, btnTogglePlayback
     if mode != "playback":
@@ -260,19 +301,18 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(centralWidget)
         layout = QVBoxLayout()
         centralWidget.setLayout(layout)
-        
+
         # ARKit Stream Display
         self.streamLabel = QLabel("ARKit Stream")
         self.streamLabel.setAlignment(Qt.AlignCenter)
-        self.streamLabel.setFixedSize(640, 480)  # Set desired display size
+        self.streamLabel.setFixedSize(640, 480)
         layout.addWidget(self.streamLabel)
 
-        # Add fps label
+        # FPS Label
         self.fpsLabel = QLabel("FPS: 0.0")
         self.fpsLabel.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.fpsLabel)
 
-        
         # Recording Controls
         recGroup = QGroupBox("Recording Controls")
         recLayout = QHBoxLayout()
@@ -282,8 +322,8 @@ class MainWindow(QMainWindow):
         recLayout.addWidget(self.btnStartRecord)
         recLayout.addWidget(self.btnStopRecord)
         layout.addWidget(recGroup)
-        
-        # Playback Controls (Single toggle button)
+
+        # Playback Controls
         playGroup = QGroupBox("Playback Controls")
         playLayout = QHBoxLayout()
         playGroup.setLayout(playLayout)
@@ -291,11 +331,20 @@ class MainWindow(QMainWindow):
         btnTogglePlayback = QPushButton("Start Playback")
         playLayout.addWidget(btnTogglePlayback)
         layout.addWidget(playGroup)
-        
+
+        # **Export to COLMAP Button**
+        exportGroup = QGroupBox("Export")
+        exportLayout = QHBoxLayout()
+        exportGroup.setLayout(exportLayout)
+        self.btnExportColmap = QPushButton("Export to COLMAP")
+        exportLayout.addWidget(self.btnExportColmap)
+        layout.addWidget(exportGroup)
+
         # Connect button signals to callbacks
         self.btnStartRecord.clicked.connect(start_recording_callback)
         self.btnStopRecord.clicked.connect(stop_recording_callback)
         btnTogglePlayback.clicked.connect(toggle_playback_callback)
+        self.btnExportColmap.clicked.connect(export_to_colmap_callback) 
 
     def updateArkitStream(self):
         global last_frame, fps, frame_count, fps_timer_start
