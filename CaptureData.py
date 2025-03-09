@@ -3,12 +3,15 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
+import shutil
 import time
 import threading
 from ARKitClient import ARKitClient
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox, QLabel
+from PyQt5.QtWidgets import QApplication, QLineEdit, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox, QLabel
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QImage, QPixmap
+import os  # Import the 'os' module
+
 
 # -------------------------
 # Global Variables and State
@@ -39,6 +42,8 @@ frame_count = 0
 fps = 0.0
 fps_timer_start = time.time()
 
+# Default Export Hz
+export_hz = 4
 
 # -------------------------
 # ARKit Recording Loop (background thread)
@@ -109,38 +114,54 @@ def set_axes_equal(ax):
     ax.view_init(elev=20, azim=-60)
 
 def export_to_colmap():
-    import os
+    global export_hz
     from scipy.spatial.transform import Rotation as R
-
+    
+    if len(recorded_trajectory) < 2:
+        print("Not enough frames recorded to export.")
+        return
+    
     export_dir = "colmap_export"
     images_dir = os.path.join(export_dir, "images")
     sparse_dir = os.path.join(export_dir, "sparse")
+    
+    # Clear existing images if the directory exists
+    if os.path.exists(images_dir):
+        shutil.rmtree(images_dir) # remove the whole directory and its content
+    
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(sparse_dir, exist_ok=True)
-
-    # Prepare cameras.txt (using default iPhone intrinsics as example)
+    
+    # Compute time interval for sampling
+    times = np.array([entry["time"] for entry in recorded_trajectory])
+    duration = times[-1] - times[0]
+    interval = 1.0 / export_hz  # Convert Hz to time interval
+    
+    sampled_trajectory = []
+    last_sampled_time = times[0]
+    for entry in recorded_trajectory:
+        if entry["time"] >= last_sampled_time:
+            sampled_trajectory.append(entry)
+            last_sampled_time += interval
+    
+    print(f"Exporting {len(sampled_trajectory)} frames at {export_hz} Hz.")
+    
     with open(os.path.join(sparse_dir, "cameras.txt"), 'w') as f:
         f.write("# Camera_ID Model Width Height fx fy cx cy\n")
         f.write("1 PINHOLE 1920 1440 1450 1450 960 540\n")
-
-    # Prepare images.txt
+    
     with open(os.path.join(sparse_dir, "images.txt"), "w") as f:
         f.write("# Image_ID qw qx qy qz tx ty tz Camera_ID Name\n")
-        for idx, entry in enumerate(recorded_trajectory):
+        for idx, entry in enumerate(sampled_trajectory):
             T = np.array(entry["pose"]).reshape(4,4)
             position = T[:3, 3]
             rotation = R.from_matrix(T[:3, :3])
-            qw, qx, qy, qz = rotation.as_quat()  # Ensure correct order for COLMAP
-            T = np.array(entry["pose"]).reshape(4, 4)  # Convert pose list to a NumPy array
-            tx, ty, tz = position  # Extract translation vector correctly   
+            qw, qx, qy, qz = rotation.as_quat()
+            tx, ty, tz = position
             image_name = f"frame_{idx:04d}.jpg"
-
-            # Save image
             cv2.imwrite(os.path.join(images_dir, image_name), entry["frame"])
-
-            # Write to images.txt
             f.write(f"{idx+1} {qw} {qx} {qy} {qz} {tx} {ty} {tz} 1 {image_name}\n")
-
+    
     print("Exported trajectory to COLMAP format successfully!")
 
 # -------------------------
@@ -210,7 +231,7 @@ def preprocess_recorded_data():
     spline_tck, _ = splprep([positions[:,0], positions[:,1], positions[:,2]], u=u_data, s=0)
     # Sample many points along the spline for plotting the smooth trajectory
     u_fine_arr = np.linspace(0, 1, 300)
-    global x_fine, y_fine, z_fine
+    global x_fine, y_fine, z_fine  # This line is likely redundant, but doesn't hurt
     x_fine, y_fine, z_fine = splev(u_fine_arr, spline_tck)
 
 # -------------------------
@@ -340,11 +361,35 @@ class MainWindow(QMainWindow):
         exportLayout.addWidget(self.btnExportColmap)
         layout.addWidget(exportGroup)
 
+        # Hz Input
+        hzLayout = QHBoxLayout()
+        hzLabel = QLabel("Export Hz (2-4 Hz recommended):")
+        self.export_hz_input = QLineEdit(str(export_hz))  # Corrected: Added 'self.'
+        hzLayout.addWidget(hzLabel)
+        hzLayout.addWidget(self.export_hz_input) # Corrected: Added 'self.'
+        layout.addLayout(hzLayout)
+
         # Connect button signals to callbacks
         self.btnStartRecord.clicked.connect(start_recording_callback)
         self.btnStopRecord.clicked.connect(stop_recording_callback)
         btnTogglePlayback.clicked.connect(toggle_playback_callback)
-        self.btnExportColmap.clicked.connect(export_to_colmap_callback) 
+        self.btnExportColmap.clicked.connect(self.export_colmap_callback)
+
+    def export_colmap_callback(self):
+        self.set_export_hz()  # Update export Hz before exporting
+        export_to_colmap()
+
+    def set_export_hz(self):  # Moved inside the class
+        global export_hz
+        try:
+            new_hz = int(self.export_hz_input.text())
+            if 1 <= new_hz <= 50:
+                export_hz = new_hz
+                print(f"Export Hz set to: {export_hz} Hz")
+            else:
+                print("Please enter a value between 1 and 50 Hz.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
     def updateArkitStream(self):
         global last_frame, fps, frame_count, fps_timer_start
@@ -362,6 +407,10 @@ class MainWindow(QMainWindow):
                 frame_count = 0
                 fps_timer_start = time.time()
                 self.fpsLabel.setText(f"FPS: {fps:.1f}")
+
+    def export_colmap_callback(self):
+        self.set_export_hz()  # Update export Hz before exporting
+        export_to_colmap()
 
     def set_axes_equal(ax):
         """Set 3D plot axes to equal scale so that spheres appear as spheres and lines are not distorted."""

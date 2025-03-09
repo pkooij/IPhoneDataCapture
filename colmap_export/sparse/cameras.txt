@@ -1,0 +1,2 @@
+# Camera_ID Model Width Height fx fy cx cy
+1 PINHOLE 1920 1440 1450 1450 960 540
