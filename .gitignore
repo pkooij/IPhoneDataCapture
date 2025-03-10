@@ -1,2 +1,46 @@
 database.db
 output.ply
+
+# User-specific Xcode files
+*.xcuserdata/
+*.xcscmblueprint
+
+# Build artifacts
+build/
+DerivedData/
+*.o
+*.swp
+*.swo
+*.swm
+
+# CocoaPods dependencies
+Pods/
+*.xcworkspace
+
+# Swift Package Manager dependencies
+/.swiftpm/
+Package.resolved
+
+# Carthage dependencies
+Carthage/Checkouts
+Carthage/Build
+
+# Simulator generated files
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Logs and temporary files
+*.log
+*.DS_Store
+
+# Fastlane metadata (optional)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Ignore Python cache if using Python scripts
+__pycache__/
+*.pyc
+*.pyo
