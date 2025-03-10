@@ -2,6 +2,9 @@
  
 App + script to read iphone ARkit position and read and send images over tcp network to python script `CaptureData.py`. They to visualize images and positions of recordings with Qt app.
 
+## To capture trajectory data
+- Install Iphone app on your IPhone
+- Run: `python CaptureData.py` and press start and stop record, visualize 3d trajctory afterwards.
 
 ## To create 3D point cloud from 2D images (advised to run in collab for CUDA and max speed)
 ### Create 3d point cloud with SfM pipeline (colmap)
@@ -18,7 +21,13 @@ cp colmap_export/sparse/images.txt colmap_export/sparse/0/`
 - run colmap 3d reconstruction: `colmap mapper --database_path database.db --image_path colmap_export/images --output_path colmap_export/sparse --Mapper.init_image_id1 1` (1 min 40 sec)
 - visualize running: `colmap gui`, press `File -> Import Model -> (select "sparse/0" folder)`
 
+TODO: use DISK and lightglue and compare with current colmap only approach
+
+### Create dense 3d point cloud with MVS pipeline (colmap)
+ TODO: Implement dense pointcloud with with colmap (MVS), run in collab
+
 ### Export to ply, visualize with open3D
 - export to ply format (for gaussan splatting): `colmap model_converter --input_path colmap_export/sparse/0 --output_path output.ply --output_type PLY`
 - Visualize again with open3d: `python visualize_colmap.py`
+
 
