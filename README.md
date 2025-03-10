@@ -6,6 +6,8 @@ App + script to read iphone ARkit position and read and send images over tcp net
 - Install Iphone app on your IPhone located in `ARKitStreamer` folder
 - Run: `python CaptureData.py` and press start and stop record, visualize 3d trajctory afterwards.
 
+---
+
 ## Extra: Generate point clouds from 2D images
 ### To create 3D point cloud from 2D images (advised to run in collab for CUDA and max speed)
 #### Create 3d point cloud with SfM pipeline (colmap)
