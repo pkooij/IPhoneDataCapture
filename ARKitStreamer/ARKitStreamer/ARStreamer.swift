@@ -58,9 +58,7 @@ class ARStreamer: NSObject, ARSessionDelegate, ObservableObject {
     private func sendFrame(_ frame: ARFrame) {
         guard let connection = connection else { return }
 
-        // ------------------
-        // 1) Pose transform
-        // ------------------
+        // Pose transform
         let transform = frame.camera.transform
         let transformArray: [Float] = [
             transform.columns.0.x, transform.columns.0.y, transform.columns.0.z, transform.columns.0.w,
@@ -69,9 +67,7 @@ class ARStreamer: NSObject, ARSessionDelegate, ObservableObject {
             transform.columns.3.x, transform.columns.3.y, transform.columns.3.z, transform.columns.3.w
         ]
         
-        // ------------------
-        // 2) Intrinsics 3x3
-        // ------------------
+        // Intrinsics 3x3
         let intrinsics = frame.camera.intrinsics
         let intrinsicsArray: [Float] = [
             intrinsics.columns.0.x, intrinsics.columns.0.y, intrinsics.columns.0.z,
@@ -79,25 +75,20 @@ class ARStreamer: NSObject, ARSessionDelegate, ObservableObject {
             intrinsics.columns.2.x, intrinsics.columns.2.y, intrinsics.columns.2.z
         ]
         
-        // -----------
-        // 3) RGB image
-        // -----------
+        // RGB image
         let ciImage = CIImage(cvPixelBuffer: frame.capturedImage)
         let context = CIContext()
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
         let uiImage = UIImage(cgImage: cgImage)
         guard let jpgData = uiImage.jpegData(compressionQuality: 0.5) else { return }
 
-        // Build dictionary
         var frameDict: [String: Any] = [
             "transform": transformArray,
             "intrinsics": intrinsicsArray,
             "timestamp": frame.timestamp
         ]
 
-        // -----------
-        // 4) Depth map
-        // -----------
+        // Depth map
         var depthData = Data()
         if let sceneDepth = frame.sceneDepth {
             let depthBuffer = sceneDepth.depthMap

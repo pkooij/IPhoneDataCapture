@@ -48,9 +48,8 @@ struct MainView: View {
             ContentView(arStreamer: arStreamer)
                 .edgesIgnoringSafeArea(.all)
 
-            // Overlay UI (status indicators)
             VStack {
-                Spacer().frame(height: 50) // Adjust to move UI down from top notch
+                Spacer().frame(height: 50)
 
                 HStack {
                     VStack(alignment: .leading, spacing: 8) {
@@ -73,7 +72,7 @@ struct MainView: View {
                     Spacer()
                 }
 
-                Spacer() // Push everything to top-left corner
+                Spacer()
             }
         }
         .onAppear {

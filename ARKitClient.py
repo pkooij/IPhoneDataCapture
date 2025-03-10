@@ -17,20 +17,18 @@ class ARKitClient:
 
     def get_frames(self):
         while True:
-            # 1) Read JSON length and JSON data
             json_length = struct.unpack('i', self.recv_exact(4))[0]
             json_data = json.loads(self.recv_exact(json_length))
 
-            # 2) Parse out transform & intrinsics
+            # Parse out transform & intrinsics
             pose = json_data["transform"]       # 16 floats
             intrinsics = json_data["intrinsics"]  # 9 floats
 
-            # 3) JPEG image data
             jpeg_length = struct.unpack('i', self.recv_exact(4))[0]
             frame_data = self.recv_exact(jpeg_length)
             frame = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
 
-            # 4) Depth data (if any)
+            # Depth data (if any)
             depth_length = struct.unpack('i', self.recv_exact(4))[0]
             if depth_length > 0:
                 depth_data = self.recv_exact(depth_length)

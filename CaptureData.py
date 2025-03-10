@@ -10,17 +10,13 @@ from ARKitClient import ARKitClient
 from PyQt5.QtWidgets import QApplication, QLineEdit, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGroupBox, QLabel
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QImage, QPixmap
-import os  # Import the 'os' module
+import os 
 
 
-# -------------------------
-# Global Variables and State
-# -------------------------
 recorded_trajectory = []  # List of dicts: {"time": float, "pose": list, "frame": image}
-mode = "idle"           # Can be "idle", "recording", or "playback"
+mode = "idle" # Can be "idle", "recording", or "playback"
 is_recording = False
 
-# Playback control variables
 playback_running = False
 current_playback_time = 0.0
 last_update_time = None
@@ -31,23 +27,14 @@ y_fine = None
 z_fine = None
 times_array = None
 
-# Global variable for ARKit stream display
-last_frame = None  # Latest frame received from ARKit
-
-# Global variable for the playback QTimer (set later)
+last_frame = None  
 playback_timer = None
-
-# FPS count
 frame_count = 0
 fps = 0.0
 fps_timer_start = time.time()
-
-# Default Export Hz
 export_hz = 4
 
-# -------------------------
 # ARKit Recording Loop (background thread)
-# -------------------------
 def arkit_loop():
     global mode, is_recording, recorded_trajectory, last_frame, frame_count
     IPHONE_IP = "192.168.1.21"
@@ -68,9 +55,7 @@ def arkit_loop():
             })
     print("ARKit loop ended.")
 
-# -------------------------
-# Playback Update Function (invoked by QTimer)
-# -------------------------
+# Playback Update Function
 def updatePlaybackTimer():
     global current_playback_time, last_update_time, total_duration, playback_running, mode, btnTogglePlayback
     if mode != "playback":
@@ -110,7 +95,7 @@ def set_axes_equal(ax):
     ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
-    # Set Y-axis upwards view angle for clarity
+    # Set y upwards
     ax.view_init(elev=20, azim=-60)
 
 def export_to_colmap():
@@ -125,17 +110,16 @@ def export_to_colmap():
     images_dir = os.path.join(export_dir, "images")
     sparse_dir = os.path.join(export_dir, "sparse")
     
-    # Clear existing images if the directory exists
+    # Clear existing images 
     if os.path.exists(images_dir):
-        shutil.rmtree(images_dir) # remove the whole directory and its content
+        shutil.rmtree(images_dir) 
     
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(sparse_dir, exist_ok=True)
     
-    # Compute time interval for sampling
     times = np.array([entry["time"] for entry in recorded_trajectory])
     duration = times[-1] - times[0]
-    interval = 1.0 / export_hz  # Convert Hz to time interval
+    interval = 1.0 / export_hz 
     
     sampled_trajectory = []
     last_sampled_time = times[0]
@@ -164,9 +148,7 @@ def export_to_colmap():
     
     print("Exported trajectory to COLMAP format successfully!")
 
-# -------------------------
 # Update the Matplotlib 3D Plot
-# -------------------------
 def update_plot():
     global current_playback_time, total_duration, spline_tck, recorded_trajectory, times_array, x_fine, y_fine, z_fine
     if spline_tck is None:
@@ -175,7 +157,7 @@ def update_plot():
     u_current = np.clip(current_playback_time / total_duration, 0, 1)
     x_cur, y_cur, z_cur = splev(u_current, spline_tck)
 
-    # Convert positions from meters to millimeters
+    # Convert meters to millimeters
     x_cur_mm, y_cur_mm, z_cur_mm = x_cur * 1000, y_cur * 1000, z_cur * 1000
     x_fine_mm = np.array(x_fine) * 1000
     y_fine_mm = np.array(y_fine) * 1000
@@ -187,34 +169,31 @@ def update_plot():
     T = np.array(entry["pose"], dtype=np.float32).reshape(4, 4).T
     R = T[:3, :3]  # Rotation matrix
 
-    # Update the matplotlib 3D plot with Y-axis upwards
+    # Update matplotlib
     ax.cla()
     
-    # Swap axes to set Y as upwards: (X, Z, Y)
+    # Swap axes to set y as upwards
     ax.plot(x_fine_mm, z_fine_mm, y_fine_mm, 'b-', label="Smooth Trajectory")
     ax.scatter([x_cur_mm], [z_cur_mm], [y_cur_mm], color='r', s=50, label="Phone Position")
 
-    arrow_length_mm = 20  # Length in mm for visibility
+    arrow_length_mm = 20 
     ax.quiver(x_cur_mm, z_cur_mm, y_cur_mm, R[0,0], R[2,0], R[1,0], length=arrow_length_mm, color='r', normalize=True)
     ax.quiver(x_cur_mm, z_cur_mm, y_cur_mm, R[0,1], R[2,1], R[1,1], length=arrow_length_mm, color='g', normalize=True)
     ax.quiver(x_cur_mm, z_cur_mm, y_cur_mm, R[0,2], R[2,2], R[1,2], length=arrow_length_mm, color='b', normalize=True)
 
     ax.set_xlabel("X (mm)")
-    ax.set_ylabel("Z (mm)")  # original Z axis becomes depth
-    ax.set_zlabel("Y (mm) [Up]")  # Y-axis is upwards
+    ax.set_ylabel("Z (mm)")  # original z axis becomes depth
+    ax.set_zlabel("Y (mm) [Up]")  # y is up
     ax.set_title(f"Trajectory Playback (Time: {current_playback_time:.2f} s)")
     ax.legend()
 
     set_axes_equal(ax)
     plt.draw()
 
-    # Also show the corresponding image in a separate OpenCV window
     cv2.imshow("Playback Image", entry["frame"])
     cv2.waitKey(1)
 
-# -------------------------
-# Preprocess Recorded Data for Playback
-# -------------------------
+# Preprocess Data for Playback
 def preprocess_recorded_data():
     global times_array, total_duration, spline_tck, x_fine, y_fine, z_fine, recorded_trajectory
     times_array = np.array([entry["time"] for entry in recorded_trajectory])
@@ -229,19 +208,16 @@ def preprocess_recorded_data():
     positions = np.array(positions)
     u_data = times_array / total_duration
     spline_tck, _ = splprep([positions[:,0], positions[:,1], positions[:,2]], u=u_data, s=0)
-    # Sample many points along the spline for plotting the smooth trajectory
+    # Sample points along the spline for smooth trajectory
     u_fine_arr = np.linspace(0, 1, 300)
-    global x_fine, y_fine, z_fine  # This line is likely redundant, but doesn't hurt
     x_fine, y_fine, z_fine = splev(u_fine_arr, spline_tck)
 
-# -------------------------
-# UI Callback Functions for Recording and Playback
-# -------------------------
+# UI Callbacks
 def start_recording_callback():
     global mode, is_recording, recorded_trajectory
     if mode != "recording":
         print("Starting recording...")
-        recorded_trajectory = []  # Clear previous recording data
+        recorded_trajectory = [] 
         mode = "recording"
         is_recording = True
         threading.Thread(target=arkit_loop, daemon=True).start()
@@ -253,7 +229,6 @@ def stop_recording_callback():
         mode = "idle"
         print("Recording stopped. {} frames recorded.".format(len(recorded_trajectory)))
 
-# Callback Function for Export Button
 def export_to_colmap_callback():
     preprocess_recorded_data()
     export_to_colmap()
@@ -278,14 +253,14 @@ def toggle_playback_callback():
     else:
         # Mode is playback; toggle pause/resume.
         if playback_running:
-            # Pause playback.
+            # Pause playback
             playback_running = False
             if playback_timer is not None:
                 playback_timer.stop()
             btnTogglePlayback.setText("Resume Playback")
             print("Playback paused.")
         else:
-            # Resume playback.
+            # Resume playback
             playback_running = True
             last_update_time = time.time()
             if playback_timer is not None:
@@ -293,16 +268,12 @@ def toggle_playback_callback():
             btnTogglePlayback.setText("Pause Playback")
             print("Playback resumed.")
 
-# -------------------------
-# Setup Matplotlib Figure for Playback
-# -------------------------
-plt.ion()  # Turn on interactive mode for matplotlib
+# Setup Matplotlib for Playback
+plt.ion()  # Turn on interactive mode
 fig = plt.figure("Trajectory Playback")
 ax = fig.add_subplot(111, projection='3d')
 
-# -------------------------
-# PyQt5 UI: Main Window with Physical Buttons and ARKit Stream Display
-# -------------------------
+# PyQt5 UI: Main Window
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -353,7 +324,7 @@ class MainWindow(QMainWindow):
         playLayout.addWidget(btnTogglePlayback)
         layout.addWidget(playGroup)
 
-        # **Export to COLMAP Button**
+        # Export to COLMAP
         exportGroup = QGroupBox("Export")
         exportLayout = QHBoxLayout()
         exportGroup.setLayout(exportLayout)
@@ -364,12 +335,12 @@ class MainWindow(QMainWindow):
         # Hz Input
         hzLayout = QHBoxLayout()
         hzLabel = QLabel("Export Hz (2-4 Hz recommended):")
-        self.export_hz_input = QLineEdit(str(export_hz))  # Corrected: Added 'self.'
+        self.export_hz_input = QLineEdit(str(export_hz))  
         hzLayout.addWidget(hzLabel)
-        hzLayout.addWidget(self.export_hz_input) # Corrected: Added 'self.'
+        hzLayout.addWidget(self.export_hz_input)
         layout.addLayout(hzLayout)
 
-        # Connect button signals to callbacks
+        # Connect callbacks
         self.btnStartRecord.clicked.connect(start_recording_callback)
         self.btnStopRecord.clicked.connect(stop_recording_callback)
         btnTogglePlayback.clicked.connect(toggle_playback_callback)
@@ -379,7 +350,7 @@ class MainWindow(QMainWindow):
         self.set_export_hz()  # Update export Hz before exporting
         export_to_colmap()
 
-    def set_export_hz(self):  # Moved inside the class
+    def set_export_hz(self): 
         global export_hz
         try:
             new_hz = int(self.export_hz_input.text())
@@ -408,10 +379,6 @@ class MainWindow(QMainWindow):
                 fps_timer_start = time.time()
                 self.fpsLabel.setText(f"FPS: {fps:.1f}")
 
-    def export_colmap_callback(self):
-        self.set_export_hz()  # Update export Hz before exporting
-        export_to_colmap()
-
     def set_axes_equal(ax):
         """Set 3D plot axes to equal scale so that spheres appear as spheres and lines are not distorted."""
         x_limits = ax.get_xlim3d()
@@ -431,10 +398,6 @@ class MainWindow(QMainWindow):
         ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
         ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
-
-# -------------------------
-# Main Application Startup
-# -------------------------
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow()
