@@ -3,7 +3,7 @@
 App + script to read iphone ARkit position and read and send images over tcp network to python script `CaptureData.py`. They to visualize images and positions of recordings with Qt app.
 
 ## To capture trajectory data
-- Install Iphone app on your IPhone
+- Install Iphone app on your IPhone located in `ARKitStreamer` folder
 - Run: `python CaptureData.py` and press start and stop record, visualize 3d trajctory afterwards.
 
 ## To create 3D point cloud from 2D images (advised to run in collab for CUDA and max speed)
