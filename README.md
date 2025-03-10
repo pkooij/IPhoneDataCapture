@@ -4,6 +4,7 @@ App + script to read iphone ARkit position and read and send images over tcp net
 
 ## To capture trajectory data
 - Install Iphone app on your IPhone located in `ARKitStreamer` folder
+- Set phone IP (visible in app) in python script `IPHONE_IP` in `arkit_loop()` (make sure phone and laptop are connected to same network)
 - Run: `python CaptureData.py` and press start and stop record, visualize 3d trajctory afterwards.
 
 ---
