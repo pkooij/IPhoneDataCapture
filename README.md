@@ -6,8 +6,9 @@ App + script to read iphone ARkit position and read and send images over tcp net
 - Install Iphone app on your IPhone located in `ARKitStreamer` folder
 - Run: `python CaptureData.py` and press start and stop record, visualize 3d trajctory afterwards.
 
-## To create 3D point cloud from 2D images (advised to run in collab for CUDA and max speed)
-### Create 3d point cloud with SfM pipeline (colmap)
+## Extra: Generate point clouds from 2D images
+### To create 3D point cloud from 2D images (advised to run in collab for CUDA and max speed)
+#### Create 3d point cloud with SfM pipeline (colmap)
 - Install colmap (macOs): `brew install colmap`
 - export trajectory and images for colmap (with button) (4 hz, total 52 images)
 - run feature extraction (colmap): `colmap feature_extractor --database_path database.db --image_path colmap_export/images --ImageReader.camera_model PINHOLE` (3 sec)
@@ -23,10 +24,10 @@ cp colmap_export/sparse/images.txt colmap_export/sparse/0/`
 
 TODO: use DISK and lightglue and compare with current colmap only approach
 
-### Create dense 3d point cloud with MVS pipeline (colmap)
+#### Create dense 3d point cloud with MVS pipeline (colmap)
  TODO: Implement dense pointcloud with with colmap (MVS), run in collab
 
-### Export to ply, visualize with open3D
+#### Export to ply, visualize with open3D
 - export to ply format (for gaussan splatting): `colmap model_converter --input_path colmap_export/sparse/0 --output_path output.ply --output_type PLY`
 - Visualize again with open3d: `python visualize_colmap.py`
 
